@@ -12,6 +12,8 @@ import com.uang.feipi.service.SetMealService;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,8 +32,9 @@ public class SetMealController {
     @Autowired
     private CategoryService categoryService;
 
+    @CacheEvict(value = "setMealCache", allEntries = true)
     @PostMapping
-    private R<String> save (@RequestBody SetmealDto setmealDto){
+    public R<String> save (@RequestBody SetmealDto setmealDto){
         setMealService.saveWithDish(setmealDto);
         return R.success("添加成功");
     }
@@ -59,13 +62,13 @@ public class SetMealController {
         setmealDtoPage.setRecords(setmealDtos);
         return R.success(setmealDtoPage);
     }
-
+    @CacheEvict(value = "setMealCache", allEntries = true)
     @DeleteMapping
     public R<String> delete(@RequestParam List<Long> ids){
         setMealService.removeWithDish(ids);
         return R.success("删除成功");
     }
-
+    @Cacheable(value = "setMealCache", key = "#setmeal.categoryId + '_' + #setmeal.status")
     @GetMapping("/list")
     public R<List<Setmeal>> list(Setmeal setmeal){
         LambdaQueryWrapper<Setmeal> setmealLambdaQueryWrapper = new LambdaQueryWrapper<>();

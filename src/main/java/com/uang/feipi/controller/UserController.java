@@ -8,17 +8,23 @@ import com.uang.feipi.utils.SMSUtils;
 import com.uang.feipi.utils.ValidateCodeUtils;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.annotation.Resource;
 import javax.servlet.http.HttpSession;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @RestController
 @RequestMapping("/user")
 public class UserController {
+
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
     @Autowired
     private UserService userService;
     @RequestMapping("/sendMsg")
@@ -28,11 +34,14 @@ public class UserController {
             String code = ValidateCodeUtils.generateValidateCode4String(4);
             System.out.println(code);
 //            SMSUtils.sendMessage("吊人外卖", "", phone, code);
-            httpSession.setAttribute(phone, code);
+//            httpSession.setAttribute(phone, code);
+            stringRedisTemplate.opsForValue().set("phone", code, 5, TimeUnit.MINUTES);
             return R.success("验证码发送成功");
         }
         return R.success("短信发送失败");
     }
+
+
     @RequestMapping("/login")
     public R<String> login(@RequestBody Map<String, String> map, HttpSession httpSession) {
 //        String code1 = (String)httpSession.getAttribute("phone");
@@ -52,6 +61,9 @@ public class UserController {
 //        }
 //        return R.error("登录失败");
 //    }
+        String code = stringRedisTemplate.opsForValue().get(map.get("phone"));
+        if (code != map.get("code"))
+            return R.error("验证码错误");
         LambdaQueryWrapper<User> uSerLambdaQueryWrapper = new LambdaQueryWrapper<>();
             uSerLambdaQueryWrapper.eq(User::getPhone, map.get("phone"));
             User user = userService.getOne(uSerLambdaQueryWrapper);
